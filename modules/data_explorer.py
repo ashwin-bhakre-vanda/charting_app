@@ -1,6 +1,5 @@
 import pandas as pd
 from typing import Literal
-from rapidfuzz import process
 from . import vanda_xasset_api as xa
 
 def load_catalog_xasset() -> pd.DataFrame:
@@ -14,7 +13,14 @@ def load_catalog_xasset() -> pd.DataFrame:
         fm["source"] = "VandaXAsset"
         dfs.append(fm)
     if dfs:
-        cat = pd.concat
+        cat = pd.concat(dfs, ignore_index=True)
+        if "series_id" not in cat.columns:
+            for c in ["_id", "timeseries_id", "series", "id"]:
+                if c in cat.columns:
+                    cat = cat.rename(columns={c: "series_id"})
+                    break
+        return cat
+    return pd.DataFrame()
 
 def unified_search(keyword: str, source: Literal["All","VandaXAsset","VandaTrack"]="All") -> pd.DataFrame:
     keyword = (keyword or "").strip()
@@ -28,8 +34,4 @@ def unified_search(keyword: str, source: Literal["All","VandaXAsset","VandaTrack
             frames.append(xcat)
     if not frames:
         return pd.DataFrame()
-    out = pd.concat(frames, ignore_index=True)
-    keep = [c for c in ["series_id","description","asset","geography","sector","model_id","field_name","source"] if c in out.columns]
-    if keep:
-        out = out[keep + [c for c in out.columns if c not in keep]]
-    return out
+    return pd.concat(frames, ignore_index=True)
